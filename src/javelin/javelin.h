@@ -13,6 +13,12 @@
 #include <stddef.h>
 #include <stdint.h>
 
+#if defined(__GNUC__)
+#define JV_API __attribute__((visibility("default")))
+#else
+#define JV_API
+#endif
+
 typedef int32_t jv_result_t;
 
 #define JV_OK 0
@@ -54,45 +60,45 @@ enum jv_mem_flags {
 };
 
 /* process */
-jv_result_t jv_query_system_info(int info_class, void *buf, uint32_t len, uint32_t *out_len);
-jv_result_t jv_query_process_info(jv_handle_t proc, int info_class, void *buf, uint32_t len,
+JV_API jv_result_t jv_query_system_info(int info_class, void *buf, uint32_t len, uint32_t *out_len);
+JV_API jv_result_t jv_query_process_info(jv_handle_t proc, int info_class, void *buf, uint32_t len,
                                   uint32_t *out_len);
-jv_result_t jv_open_process(jv_handle_t *out, uint32_t access, void *client_id);
-jv_result_t jv_close_handle(jv_handle_t h);
+JV_API jv_result_t jv_open_process(jv_handle_t *out, uint32_t access, void *client_id);
+JV_API jv_result_t jv_close_handle(jv_handle_t h);
 
 /* memory */
-jv_result_t jv_read_memory(jv_handle_t proc, void *addr, void *buf, uint32_t len,
+JV_API jv_result_t jv_read_memory(jv_handle_t proc, void *addr, void *buf, uint32_t len,
                            uint32_t *out_len);
-jv_result_t jv_write_memory(jv_handle_t proc, void *addr, const void *buf, uint32_t len,
+JV_API jv_result_t jv_write_memory(jv_handle_t proc, void *addr, const void *buf, uint32_t len,
                             uint32_t *out_len);
-jv_result_t jv_protect_memory(jv_handle_t proc, void **addr, uint32_t *len, uint32_t prot,
+JV_API jv_result_t jv_protect_memory(jv_handle_t proc, void **addr, uint32_t *len, uint32_t prot,
                               uint32_t *old_prot);
-jv_result_t jv_alloc_memory(jv_handle_t proc, void **addr, uint32_t *len, uint32_t flags,
+JV_API jv_result_t jv_alloc_memory(jv_handle_t proc, void **addr, uint32_t *len, uint32_t flags,
                             uint32_t prot);
-jv_result_t jv_free_memory(jv_handle_t proc, void **addr, uint32_t *len, uint32_t free_type);
-jv_result_t jv_flush_icache(jv_handle_t proc, void *addr, uint32_t len);
+JV_API jv_result_t jv_free_memory(jv_handle_t proc, void **addr, uint32_t *len, uint32_t free_type);
+JV_API jv_result_t jv_flush_icache(jv_handle_t proc, void *addr, uint32_t len);
 
 /* threads */
-jv_result_t jv_create_thread(jv_handle_t *out, void *start, void *arg);
+JV_API jv_result_t jv_create_thread(jv_handle_t *out, void *start, void *arg);
 
 /* debug */
-jv_result_t jv_debug_attach(jv_handle_t proc);
-jv_result_t jv_debug_detach(jv_handle_t proc);
+JV_API jv_result_t jv_debug_attach(jv_handle_t proc);
+JV_API jv_result_t jv_debug_detach(jv_handle_t proc);
 
 /* registry (stub) */
-jv_result_t jv_query_value(void *key, void *name, uint32_t class, void *buf, uint32_t len,
+JV_API jv_result_t jv_query_value(void *key, void *name, uint32_t class, void *buf, uint32_t len,
                            uint32_t *out_len);
 
 /* files (stub) */
-jv_result_t jv_create_file(jv_handle_t *out, const char *path, uint32_t access,
+JV_API jv_result_t jv_create_file(jv_handle_t *out, const char *path, uint32_t access,
                            uint32_t disposition);
 
 /* callbacks (stub) */
-jv_result_t jv_register_callbacks(void *reg, void **out);
-void jv_unregister_callbacks(void *cb);
+JV_API jv_result_t jv_register_callbacks(void *reg, void **out);
+JV_API void jv_unregister_callbacks(void *cb);
 
 /* lifecycle */
-int jv_init(void);
-void jv_fini(void);
+JV_API int jv_init(void);
+JV_API void jv_fini(void);
 
 #endif
