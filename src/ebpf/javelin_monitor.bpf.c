@@ -9,6 +9,10 @@
 #include <bpf/bpf_helpers.h>
 #include <bpf/bpf_tracing.h>
 
+#ifndef PROT_EXEC
+#define PROT_EXEC 0x4
+#endif
+
 char _license[] SEC("license") = "GPL";
 
 struct jvl_event {

@@ -87,21 +87,40 @@ build_ebpf() {
     log_info "building eBPF programs..."
 
     local src="$PROJECT_ROOT/src/ebpf/javelin_monitor.bpf.c"
-    local out="$PROJECT_ROOT/build/javelin_monitor.bpf.o"
-    local arch="$(uname -m)"
+    local build_dir="$PROJECT_ROOT/build"
+    local vmlinux="$build_dir/vmlinux.h"
+    local out="$build_dir/javelin_monitor.bpf.o"
+    local arch
+    arch="$(uname -m)"
 
     local target_arch
     case "$arch" in
         x86_64)  target_arch="x86" ;;
         aarch64) target_arch="arm64" ;;
-        *)       log_error "unsupported architecture: $arch"; exit 1 ;;
+        *)
+            log_error "unsupported architecture: $arch"
+            exit 1
+            ;;
     esac
 
-    mkdir -p "$PROJECT_ROOT/build"
+    if [[ ! -r /sys/kernel/btf/vmlinux ]]; then
+        log_error "kernel BTF unavailable at /sys/kernel/btf/vmlinux"
+        exit 1
+    fi
+
+    mkdir -p "$build_dir"
+
+    if [[ ! -s "$vmlinux" ]]; then
+        log_info "generating vmlinux.h from kernel BTF..."
+        bpftool btf dump file /sys/kernel/btf/vmlinux format c > "$vmlinux"
+    fi
+
+    log_info "compiling eBPF object..."
 
     clang -target bpf \
-        -D__TARGET_ARCH_${target_arch} \
-        -I/usr/include/${arch}-linux-gnu \
+        -D"__TARGET_ARCH_${target_arch}" \
+        -I"$build_dir" \
+        -I"/usr/include/${arch}-linux-gnu" \
         -I/usr/include/bpf \
         -g -O2 \
         -c "$src" \
