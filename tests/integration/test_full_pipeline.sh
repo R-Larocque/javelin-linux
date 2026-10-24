@@ -27,44 +27,43 @@ test_dlopen_exports() {
         return 1
     fi
 
-    # check symbols exist
+    # Check the complete expected public dynamic-symbol API.
     local expected=(
-        jv_query_system_info
-        jv_read_memory
-        jv_write_memory
-        jv_protect_memory
-        jv_alloc_memory
-        jv_free_memory
-        jv_create_thread
-        jv_open_process
-        jv_close_handle
-        jv_debug_attach
-        jv_debug_detach
         jv_init
         jv_fini
+        jv_query_system_info
+        jv_query_process_info
+        jv_read_memory
+        jv_write_memory
+        jv_debug_attach
+        jv_debug_detach
     )
 
-    local found=0
+    local missing=0
+    local symbols
+    symbols="$(nm -D --defined-only "$lib")"
+
     for sym in "${expected[@]}"; do
-        if nm "$lib" | grep -q " [Tt] $sym"; then
-            found=$((found + 1))
+        if ! grep -Eq "[[:space:]]${sym}$" <<< "$symbols"; then
+            log_fail "Missing dynamic export: $sym"
+            missing=$((missing + 1))
         fi
     done
 
-    if [[ $found -eq 0 ]]; then
-        log_fail "No native exports found (expected jv_* symbols)"
+    if [[ $missing -ne 0 ]]; then
+        log_fail "$missing/${#expected[@]} expected exports are missing"
         return 1
     fi
 
-    log_pass "$found/${#expected[@]} native exports found"
+    log_pass "All ${#expected[@]} expected dynamic exports found"
 }
 
 # test 2: seccomp
 test_seccomp_install() {
     log_info "Test 2: Seccomp filter installation..."
 
-    # seccomp testing requires root. covered by unit tests.
-    log_pass "seccomp filter verified by unit test"
+    # This integration test does not install or verify a seccomp filter.
+    log_info "SKIP: seccomp behavior is covered separately by the unit test suite"
 }
 
 # test 3: proton spec (currently skipped)
@@ -72,7 +71,7 @@ test_proton_spec() {
     log_info "Test 3: Proton override spec JSON validity..."
 
     log_info "Proton integration spec removed (native Linux build, no Wine/Proton)"
-    log_pass "Proton spec check skipped"
+    log_info "SKIP: no Wine/Proton integration test is implemented"
 }
 
 # test 4: eBPF syntax check
@@ -88,15 +87,17 @@ test_ebpf_syntax() {
         *)       target_arch="x86" ;;
     esac
 
-    # skip if vmlinux.h missing
-    if [[ ! -f "${PROJECT_ROOT}/src/ebpf/vmlinux.h" ]]; then
-        log_info "Skipping eBPF syntax check (vmlinux.h missing; run 'bpftool btf dump file /sys/kernel/btf/vmlinux format c > src/ebpf/vmlinux.h')"
+    local vmlinux="${BUILD_DIR}/vmlinux.h"
+
+    if [[ ! -s "$vmlinux" ]]; then
+        log_info "SKIP: ${vmlinux} is missing; run './scripts/setup_ebpf.sh build-ebpf' first"
         return 0
     fi
 
     if ! clang -target bpf \
-        -D__TARGET_ARCH_${target_arch} \
-        -I/usr/include/${arch}-linux-gnu \
+        -D"__TARGET_ARCH_${target_arch}" \
+        -I"${BUILD_DIR}" \
+        -I"/usr/include/${arch}-linux-gnu" \
         -I/usr/include/bpf \
         -fsyntax-only "$src"; then
         log_fail "eBPF source has syntax errors"

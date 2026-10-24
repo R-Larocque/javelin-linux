@@ -4,10 +4,14 @@
  * emits events only. does not block.
  */
 
-#include "vmlinux.h"
+#include <vmlinux.h>
 #include <bpf/bpf_core_read.h>
 #include <bpf/bpf_helpers.h>
 #include <bpf/bpf_tracing.h>
+
+#ifndef PROT_EXEC
+#define PROT_EXEC 0x4
+#endif
 
 char _license[] SEC("license") = "GPL";
 

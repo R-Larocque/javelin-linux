@@ -87,26 +87,68 @@ build_ebpf() {
     log_info "building eBPF programs..."
 
     local src="$PROJECT_ROOT/src/ebpf/javelin_monitor.bpf.c"
-    local out="$PROJECT_ROOT/build/javelin_monitor.bpf.o"
-    local arch="$(uname -m)"
+    local build_dir="$PROJECT_ROOT/build"
+    local vmlinux="$build_dir/vmlinux.h"
+    local out="$build_dir/javelin_monitor.bpf.o"
+    local arch
+    arch="$(uname -m)"
 
     local target_arch
     case "$arch" in
         x86_64)  target_arch="x86" ;;
         aarch64) target_arch="arm64" ;;
-        *)       log_error "unsupported architecture: $arch"; exit 1 ;;
+        *)
+            log_error "unsupported architecture: $arch"
+            exit 1
+            ;;
     esac
 
-    mkdir -p "$PROJECT_ROOT/build"
+    if [[ ! -r /sys/kernel/btf/vmlinux ]]; then
+        log_error "kernel BTF unavailable at /sys/kernel/btf/vmlinux"
+        exit 1
+    fi
 
-    clang -target bpf \
-        -D__TARGET_ARCH_${target_arch} \
-        -I/usr/include/${arch}-linux-gnu \
+    mkdir -p "$build_dir"
+
+    # Generate to a unique temporary file so concurrent or interrupted
+    # builds cannot leave a truncated shared header behind.
+    local vmlinux_tmp
+    vmlinux_tmp="$(mktemp "$build_dir/vmlinux.h.tmp.XXXXXX")"
+
+    log_info "generating vmlinux.h from kernel BTF..."
+    if ! bpftool btf dump file /sys/kernel/btf/vmlinux format c > "$vmlinux_tmp"; then
+        rm -f "$vmlinux_tmp"
+        log_error "failed to generate vmlinux.h"
+        return 1
+    fi
+
+    if [[ ! -s "$vmlinux_tmp" ]]; then
+        rm -f "$vmlinux_tmp"
+        log_error "generated vmlinux.h is empty"
+        return 1
+    fi
+
+    mv -f "$vmlinux_tmp" "$vmlinux"
+
+    log_info "compiling eBPF object..."
+
+    local out_tmp
+    out_tmp="$(mktemp "$build_dir/javelin_monitor.bpf.o.tmp.XXXXXX")"
+
+    if ! clang -target bpf \
+        -D"__TARGET_ARCH_${target_arch}" \
+        -I"$build_dir" \
+        -I"/usr/include/${arch}-linux-gnu" \
         -I/usr/include/bpf \
         -g -O2 \
         -c "$src" \
-        -o "$out"
+        -o "$out_tmp"; then
+        rm -f "$out_tmp"
+        log_error "eBPF compilation failed"
+        return 1
+    fi
 
+    mv -f "$out_tmp" "$out"
     log_info "eBPF object built: $out"
 }
 
