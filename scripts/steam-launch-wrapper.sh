@@ -7,9 +7,10 @@ set -euo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
+: "${JAVELIN_COMPAT_PREFIX:=${FLATPAK_ID:+/app}}"
 : "${JAVELIN_COMPAT_PREFIX:=/usr/local}"
 : "${JAVELIN_EBPF_OBJECT:=${JAVELIN_COMPAT_PREFIX}/lib/javelin/ebpf/javelin_monitor.bpf.o}"
-: "${JAVELIN_SHIM_PATH:=${JAVELIN_COMPAT_PREFIX}/lib/javelin/libjavelin_linux.so}"
+: "${JAVELIN_SHIM_PATH:=${JAVELIN_COMPAT_PREFIX}/lib/libjavelin.so}"
 : "${JAVELIN_LOADER:=${JAVELIN_COMPAT_PREFIX}/bin/javelin-loader}"
 : "${JAVELIN_LOG_LEVEL:=warn}"
 : "${JAVELIN_SKIP_EBPF:=0}"

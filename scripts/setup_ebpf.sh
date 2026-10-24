@@ -110,22 +110,45 @@ build_ebpf() {
 
     mkdir -p "$build_dir"
 
-    if [[ ! -s "$vmlinux" ]]; then
-        log_info "generating vmlinux.h from kernel BTF..."
-        bpftool btf dump file /sys/kernel/btf/vmlinux format c > "$vmlinux"
+    # Generate to a unique temporary file so concurrent or interrupted
+    # builds cannot leave a truncated shared header behind.
+    local vmlinux_tmp
+    vmlinux_tmp="$(mktemp "$build_dir/vmlinux.h.tmp.XXXXXX")"
+
+    log_info "generating vmlinux.h from kernel BTF..."
+    if ! bpftool btf dump file /sys/kernel/btf/vmlinux format c > "$vmlinux_tmp"; then
+        rm -f "$vmlinux_tmp"
+        log_error "failed to generate vmlinux.h"
+        return 1
     fi
+
+    if [[ ! -s "$vmlinux_tmp" ]]; then
+        rm -f "$vmlinux_tmp"
+        log_error "generated vmlinux.h is empty"
+        return 1
+    fi
+
+    mv -f "$vmlinux_tmp" "$vmlinux"
 
     log_info "compiling eBPF object..."
 
-    clang -target bpf \
+    local out_tmp
+    out_tmp="$(mktemp "$build_dir/javelin_monitor.bpf.o.tmp.XXXXXX")"
+
+    if ! clang -target bpf \
         -D"__TARGET_ARCH_${target_arch}" \
         -I"$build_dir" \
         -I"/usr/include/${arch}-linux-gnu" \
         -I/usr/include/bpf \
         -g -O2 \
         -c "$src" \
-        -o "$out"
+        -o "$out_tmp"; then
+        rm -f "$out_tmp"
+        log_error "eBPF compilation failed"
+        return 1
+    fi
 
+    mv -f "$out_tmp" "$out"
     log_info "eBPF object built: $out"
 }
 

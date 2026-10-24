@@ -32,7 +32,7 @@ modules:
   - name: libbpf
     buildsystem: simple
     build-commands:
-      - make -C src PREFIX=/app LIBDIR=lib install
+      - make -C src PREFIX=/app LIBDIR=/app/lib install
     sources:
       - type: archive
         url: https://github.com/libbpf/libbpf/archive/refs/tags/v1.3.0.tar.gz
