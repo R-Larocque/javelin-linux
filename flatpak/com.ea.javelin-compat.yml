@@ -32,13 +32,16 @@ modules:
   - name: libbpf
     buildsystem: simple
     build-commands:
-      - make -C src PREFIX=/app install
+      - make -C src PREFIX=/app LIBDIR=lib install
     sources:
       - type: archive
         url: https://github.com/libbpf/libbpf/archive/refs/tags/v1.3.0.tar.gz
         sha256: 11db86acd627e468bc48b7258c1130aba41a12c4d364f78e184fd2f5a913d861
 
   - name: javelin-linux-compat
+    build-options:
+      env:
+        PKG_CONFIG_PATH: /app/lib/pkgconfig:/app/lib64/pkgconfig
     buildsystem: cmake-ninja
     config-opts:
       - -DCMAKE_BUILD_TYPE=Release
